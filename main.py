@@ -1,7 +1,8 @@
 from picamera2 import Picamera2
 import cv2
 import time
-
+import requests
+from config import api_url
 
 # Set up the camera with Picam
 picam2 = Picamera2()
@@ -14,17 +15,49 @@ picam2.start()
 # Give camera time to warm up
 time.sleep(1)
 
+frame_count = 1
+
+last_sent_time = time.time()
+
 while True:
-    # Capture an image
-    image = picam2.capture_array()
+    frame = picam2.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    
+    current_time = time.time()
 
-    # Display the image in a window
-    cv2.imshow("Live Image", image)
+    # Frames only get sent every 1 second
+    if current_time - last_sent_time >= frame_count:
+        
+        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        image_data = buffer.tobytes()
 
-    # Wait for a key press and check if it's 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-# Release the camera and close all OpenCV windows
+        
+        # Send frames to the server
+        try:
+            response = requests.post(
+                api_url, files={'image': (f'cat-{current_time}.jpg', image_data,'image/jpeg')},
+                timeout=5
+                )
+            
+            # Get the response from the server
+            if response.status_code == 200:
+                print("Image sent successfully")
+            else:
+                print("Failed to send image")
+
+            last_sent_time = current_time
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending image: {e}")
+
+
+
+    
+
+    
+
+
+
 picam2.close()
 cv2.destroyAllWindows()
 
