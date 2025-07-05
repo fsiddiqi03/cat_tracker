@@ -15,7 +15,7 @@ class API:
     def send_request(self, frame, file_name):
         response = requests.post(
                 api_url,
-                files={'image': (filename, frame, 'image/jpeg')},
+                files={'image': (file_name, frame, 'image/jpeg')},
                 timeout=10  # Increased timeout
             )
         return response
